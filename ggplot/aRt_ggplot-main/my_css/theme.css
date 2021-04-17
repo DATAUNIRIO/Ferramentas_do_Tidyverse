@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans&display=swap');
+
+body {
+  font-family: 'Open Sans', sans-serif;
+}
+
+h1, h2, h3 {
+  font-family: 'Josefin Sans', sans-serif;
+}
+
+.remark-code, .remark-inline-code {
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* Color Variables */ 
+:root {
+--RaisinBlack: #252323;
+--White: #FFFFFF;
+--Green: #4b8378;
+--Yellow: #ffbd59;
+
+}
+
+/* Font Color */
+.my-white{ color: var(--White);}
+.my-black{ color: var(--RaisinBlack);}
+.my-green{ color: var(--Green);}
+.my-yellow{ color:var(--Yellow);}
+
+/* Slides */
+.transition-slide-green {
+  background-color: var(--Green);
+}
+
+.transition-gradient-green{
+  background: linear-gradient(90deg, #4b8378 50%, #FFFFFF 50%);
+}
+
+.transition-slide-blue {
+  background-color: #0b1b32;
+}
+
+.transition-gradient-blue {
+  background: linear-gradient(90deg, #0b1b32 50%, #FFFFFF 50%);
+}
+
+/* Hiding Slide Number */
+.remark-slide-number { 
+  display: none; 
+}
+
+
+
