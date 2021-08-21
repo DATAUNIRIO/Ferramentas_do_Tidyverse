@@ -1,0 +1,231 @@
+---
+title: "Interactive Drill-down Tables using {reactable}"
+author: "Prof. Steven Dutt Ross"
+date: "09/08/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+fonte: https://www.vishalkatti.com/posts/2021-07-27-drilldown/
+
+# Rstats reactable drill-down
+
+## How to create multi-level tables with hidden rows
+
+Author Vishal Katti
+
+We often come across denormalized data that has 2 or more levels of information. For example, top-level info like course info with data fields like course id, course name, description, start/end date and second-level info like student info with data fields like with student id, student name, age and gender. We may also have these two groups of data as separate tables with a primary-key foreign-key design, usually from a well-designed SQL database.
+
+Let us create some data.
+Top-Level data: course
+
+```{r}
+library(dplyr, quietly = TRUE, warn.conflicts = FALSE)
+library(rmarkdown, quietly = TRUE, warn.conflicts = FALSE)
+
+course <- tibble(course_id           = 1:4,
+                 course_name         = paste("Course", LETTERS[1:4]),
+                 start_date          = seq.Date(from = lubridate::as_date("2021-01-01"), by = "month", length.out = 4),
+                 end_date            = lubridate::ceiling_date(start_date, unit = "month") - 1)
+
+paged_table(course)
+```
+
+
+
+```{r}
+set.seed(42)
+student <- tibble(s_id      = 1:20,
+                  s_name    = paste("Student", LETTERS[1:20]),
+                  gender    = sample(c("X","Y","Z"), 20, replace = TRUE),
+                  age       = sample(18:35, 20, replace = TRUE),
+                  course_id = sample(1:4, 20, replace = TRUE))
+
+paged_table(student)
+```
+
+If we are sourcing data from a database, it is probable that you would see these 2 levels of data in 2 separate tables/views, but most business users are comfortable with MS Excel and want all the data in one sheet!!
+
+So the data actually looks something like this.
+
+```{r}
+combined_df <- left_join(course, student, by = "course_id")
+
+paged_table(combined_df)
+
+```
+
+
+Displaying such data in a table causes all the top-level data fields to repeat for every second-level record. You can see that course_id, course_name, start_date and end_date columns repeat for all students who enrolled in the same course. Take a moment to think about how would you display such data in an interactive table in a web page, HTML report or Shiny app.
+
+It is advisable to split such denormalized data into normalized data i.e. create the original top-level and second level tables from the combined_df.
+Vanilla reactable
+
+One of my favorite R packages is {reactable}. The default output creates a neat interactive table with pagination (if data has more than 10 rows) and ability to sort columns.
+
+```{r}
+library(reactable, quietly = TRUE, warn.conflicts = FALSE)
+
+reactable(data = combined_df)
+
+```
+
+
+# Basic Formatting
+
+With some additional tweaks, we can make it look better.
+
+```{r}
+reactable(
+  data       = combined_df,
+  compact    = TRUE, # for minimum row height
+  filterable = TRUE, # for individual column filters
+  striped    = TRUE, # banded rows
+  resizable  = TRUE, # for resizable column widths
+  columns    = list( # define custom header name, width, alignment etc.
+    course_id   = colDef(name = "CID",         width = 50,  align = "center"),
+    course_name = colDef(name = "Course Name", width = 140),
+    start_date  = colDef(name = "Start Date",  width = 120, align = "center"),
+    end_date    = colDef(name = "End Date",    width = 120, align = "center"),
+    s_id        = colDef(name = "SID",         width = 70,  align = "center"),
+    s_name      = colDef(name = "Student Name"),
+    gender      = colDef(name = "Gender",      width = 80,  align = "center"),
+    age         = colDef(name = "Age",         width = 50)
+  )
+)
+```
+
+
+However, the problem of repeating top-level fields still persists.
+Grouping and Aggregating
+
+{reactable} has a groupBy argument which lets us combined rows with common data fields and the aggregate argument inside colDef lets us define what aggregation to be used for each column of the top-level data.
+
+```{r}
+reactable(
+  data       = combined_df,
+  compact    = TRUE, # for minimum row height
+  filterable = TRUE, # for individual column filters
+  striped    = TRUE, # banded rows
+  resizable  = TRUE, # for resizable column widths
+  groupBy    = "course_id",
+  columns    = list(
+    # show count of students in each course
+    course_id   = colDef(name = "CID",         width = 100,  align = "left",    aggregate = "count"),  
+    # show unique course name
+    course_name = colDef(name = "Course Name", width = 140,                     aggregate = "unique"), 
+    # show unique start date
+    start_date  = colDef(name = "Start Date",  width = 120,  align = "center",  aggregate = "unique"), 
+    # show unique end date
+    end_date    = colDef(name = "End Date",    width = 120,  align = "center",  aggregate = "unique"), 
+    s_id        = colDef(name = "SID",         width = 70,   align = "center"),
+    s_name      = colDef(name = "Student Name"),
+    gender      = colDef(name = "Gender",      width = 80,   align = "center"),
+    age         = colDef(name = "Age",         width = 50)
+  )
+)
+```
+
+
+In this case, all the columns which are not aggregated remain hidden. Clicking the little triangle in the CID column displays the hidden rows. Looks better, but again, the issue of duplicated data remains.
+
+You can aggregate the second-level columns too, but this distorts the table and frankly, looks ugly. Here I aggregate the SID column in addition to all the other top-level columns.
+```{r}
+
+reactable(
+  data       = combined_df,
+  compact    = TRUE, # for minimum row height
+  filterable = TRUE, # for individual column filters
+  striped    = TRUE, # banded rows
+  resizable  = TRUE, # for resizable column widths
+  groupBy    = "course_id",
+  columns    = list(
+    course_id   = colDef(name = "CID",         width = 100,  align = "left",    aggregate = "count"),
+    course_name = colDef(name = "Course Name", width = 140,                     aggregate = "unique"),
+    start_date  = colDef(name = "Start Date",  width = 120,  align = "center",  aggregate = "unique"),
+    end_date    = colDef(name = "End Date",    width = 120,  align = "center",  aggregate = "unique"),
+    # YIKES!! Aggregating Student ID to show unique ids in each course.
+    s_id        = colDef(name = "SID",         width = 70,   align = "center",  aggregate = "unique"), 
+    s_name      = colDef(name = "Student Name"),
+    gender      = colDef(name = "Gender",      width = 80,   align = "center"),
+    age         = colDef(name = "Age",         width = 50)
+  )
+)
+```
+
+
+
+Wouldn’t it be nice if we could display only the top-level columns by default and on clicking the small triangle for a row, show all the second-level columns corresponding to that row only, like a drill-down table?
+
+To do this we need 2 separate tables. Earlier in this post, I said it is advisable to split such denormalized data into normalized data i.e. create the original top-level and second level tables from the combined_df. Let’s recreate the 2 tables.
+
+I want to demonstrate how we go from the combined data to the 2 tables. Hence I will not use the course and student tables created earlier.
+
+Creating the top_level table using just the columns in course. Let’s also create a new column n_students depicting count of students in each course.
+
+```{r}
+top_level <- combined_df %>% 
+  # Only course info columns
+  count(course_id, course_name, start_date, end_date, name = "n_students") 
+
+paged_table(top_level)
+```
+
+
+```{r}
+second_level <- combined_df %>% 
+  # Only Student info columns with unique identifier for Course
+  select(course_id, s_id, s_name, gender, age) %>% 
+  arrange(s_id)
+
+paged_table(second_level)
+
+```
+
+# The final Drill-down Table
+
+Now that we have the 2 tables ready, let us now create the final {reactable}. The trick here is to use the details argument to which we pass another {reactable} of just the rows with students data corresponding to given course.
+
+```{r}
+reactable(
+  data       = top_level,
+  compact    = TRUE, # for minimum row height
+  filterable = TRUE, # for individual column filters
+  striped    = TRUE, # banded rows
+  resizable  = TRUE, # for resizable column widths
+  columns    = list(
+    course_id   = colDef(name = "CID",             width = 50,  align = "center"),
+    course_name = colDef(name = "Course Name"), 
+    start_date  = colDef(name = "Start Date",      width = 120, align = "center"),
+    end_date    = colDef(name = "End Date",        width = 120, align = "center"),
+    n_students  = colDef(name = "No. of Students", width = 130, align = "center")
+  ),
+  details = function(index) { # index is the row number of current row.
+    # sub-table of only those students for current row.
+    sec_lvl = second_level[second_level$course_id == top_level$course_id[index], ] 
+    reactable(data       = sec_lvl,
+              compact    = TRUE, 
+              filterable = TRUE,
+              bordered   = TRUE, 
+              resizable  = TRUE,
+              columns    = list(
+                course_id   = colDef(show = FALSE), # hide the course id column
+                s_id        = colDef(name = "SID",    width = 70, align = "center"),
+                s_name      = colDef(name = "Student Name"),
+                gender      = colDef(name = "Gender", width = 90, align = "center"),
+                age         = colDef(name = "Age",    width = 50, align = "center")
+              )
+              )
+  }
+)
+
+```
+
+
+Since the sub-table is also a {reactable}, you can go another level down… and another, but please do consider the usability aspect of this feature before taking that decision. I haven’t tried going beyond 2 levels of data myself. Maybe a part 2 to this post??
+Conclusion
+
+Drill-down tables let you pack a lot of data in a compact manner and allow use by multiple audiences interested in varying degrees/levels of information. {reactable} can help create an interactive data table from tabular data with sorting and pagination by default. The data table is an HTML widget that can be used in R Markdown documents and Shiny applications, or viewed from an R console. A lot of features can be enabled/disabled using the basic arguments of the reactable() function and much more using custom JavaScript.

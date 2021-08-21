@@ -1,0 +1,148 @@
+---
+title: "FLEXTABLE"
+author: "Prof. Steven Dutt Ross"
+date: "09/08/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Passo 0 - carregar as bibliotecas de hoje
+
+```{r}
+
+# Passo 0 - carregar as bibliotecas de hoje
+library(dplyr)     # operador pipe e tratamento dos dados
+library(flextable) # para fazer uma tabela no RMarkdown
+library(reactable) # para fazer uma tabela no RMarkdown
+library(RColorBrewer) # para colocar a cor
+
+```
+
+# Passo 1 - carregar a base de dados
+```{r}
+# Passo 1 - carregar a base de dados
+load("C:/Users/Hp/Desktop/Base_de_dados-master/CARROS.RData")
+```
+
+
+# Passo 2 - transformacao
+```{r}
+# Passo 2 - transformacao
+CARROS$Tipodecombustivel<-ifelse(CARROS$Tipodecombustivel==1,
+                                 'Alc','Gas')
+
+CARROS$TipodeMarcha<-ifelse(CARROS$TipodeMarcha==0,
+                                 'Auto','Manual')
+```
+
+# Passo 3 - cruzamento de uma variável qualitativa 
+```{r}
+# Passo 3 - cruzamento de uma variável qualitativa 
+# e uma variável quantitativa
+
+ft1 <- CARROS %>% select(Tipodecombustivel,Preco) %>%
+           group_by(Tipodecombustivel) %>%
+           summarise(media.preco=mean(Preco),
+                     desvio.padrao_preco=sd(Preco),
+                     quantidade=n()) %>%
+          data.frame() %>% flextable()   
+
+ft1 <- bg(ft1, bg = "wheat", part = "header")
+ft1
+```
+
+```{r}
+ft1 <- bg(ft1, i = ~ media.preco < 300, bg = "skyblue", part = "body")
+ft1
+```
+
+```{r}
+ft1 <- bg(ft1, i = ~ media.preco > 300, bg = "pink", part = "body")
+# minha formatacao
+ft1
+```
+# tema do Dark Lord
+```{r}
+# tema do Dark Lord
+ft1 %>% theme_vader()
+
+```
+
+
+```{r}
+#-------------------------------------------------
+# tipo de marcha (quali) vs Km/l (quanti)
+#-------------------------------------------------
+
+ft2 <- CARROS %>% select(TipodeMarcha,Kmporlitro) %>%
+                  group_by(TipodeMarcha) %>%
+                  summarise(media=round(mean(Kmporlitro),1),
+                            desvio.padrao=round(sd(Kmporlitro),1),
+                            media2=mean(Kmporlitro),
+                            desvio.padrao2=sd(Kmporlitro),
+                            tamanho=n()) %>%
+                  data.frame() %>% flextable()
+ft2
+ft2 %>% theme_tron()
+```
+
+
+```{r}
+#-------------------------------------------------
+#-------------------------------------------------
+# Passo 4 -  visualizacao 
+#-------------------------------------------------
+#-------------------------------------------------
+
+boxplot(Preco~Tipodecombustivel,data=CARROS,
+        main="Gráfico 1 - Preço do carro por tipo de combustivel",
+        col=c("skyblue","pink"))
+
+
+# tipo de marcha (quali) vs Km/l (quanti)
+library(RColorBrewer)
+cor_dark <- brewer.pal(2,"Dark2")
+cor_dark
+
+par(bg='lightyellow')
+boxplot(Kmporlitro~TipodeMarcha,data = CARROS,
+        col=cor_dark,main="Gráfico 2 - Boxplot do Km/l por tipo de marcha",
+        horizontal = T)
+
+
+```
+
+
+```{r}
+load("C:/Users/Hp/Desktop/Base_de_dados-master/Game of Thrones.RData")
+#-------------------------------------------------
+#-------------------------------------------------
+#-------------------------------------------------
+#-------------------------------------------------
+#-------------------------------------------------
+#-------------------------------------------------
+
+
+names(personagens_livro)
+personagens_livro$nobre<-ifelse(personagens_livro$nobre==1,'nobre','não nobre')
+
+# criando a tabela empilhada
+tabela_para_flex <- personagens_livro %>% select(lealdade,nobre) %>%
+  table() %>% prop.table(1)%>% data.frame()
+
+# transformando a tabela empilhada em novas colunas
+# names_from = novas colunas
+# values_from = conteudo)
+
+library(tidyr)
+tabela_para_flex2<-tabela_para_flex %>%
+  pivot_wider(names_from = nobre, values_from = Freq)
+
+# visualizacao da nova tabela
+tabela_para_flex2 %>% flextable() %>% theme_vader()
+
+```
+
